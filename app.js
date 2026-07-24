@@ -173,12 +173,15 @@ function placeCamera() {
   camera.lookAt(curTarget);
 }
 function focusOn(wp) {
+  /* on phones the story card covers the lower half — bias the target down
+     so the focused item lands in the visible upper half */
+  const mobileBias = stage.clientWidth < 640 ? -1.5 : 0;
   focusPoint = new THREE.Vector3(
     THREE.MathUtils.clamp(wp.x, -4.2, 4.2),
-    THREE.MathUtils.clamp(wp.y + 0.5, 1.0, 2.8),
+    THREE.MathUtils.clamp(wp.y + 0.5, 1.0, 2.8) + mobileBias,
     THREE.MathUtils.clamp(wp.z, -4.2, 4.2)
   );
-  zoomTarget = 1.32;
+  zoomTarget = stage.clientWidth < 640 ? 1.2 : 1.32;
 }
 function resetFocus() { focusPoint = null; zoomTarget = 1; }
 
