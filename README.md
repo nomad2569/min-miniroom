@@ -1,7 +1,10 @@
 # ミンのミニルーム
 
-Cyworld-style isometric 3D miniroom for a Japanese self-introduction presentation
-(TimeTree Japan HQ visit). three.js r160, primitives only, no external assets.
+Cyworld-style isometric miniroom for a Japanese self-introduction presentation
+(TimeTree Japan HQ visit). three.js r160 + gpt-image-2 pixel art assets.
+
+**Live**: https://nomad2569.github.io/min-miniroom/ (GitHub Pages, main branch)
+— but presenting from the offline file is still recommended (no wifi risk).
 
 ## Files
 
