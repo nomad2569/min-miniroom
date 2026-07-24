@@ -173,15 +173,12 @@ function placeCamera() {
   camera.lookAt(curTarget);
 }
 function focusOn(wp) {
-  /* on phones the story card covers the lower half — bias the target down
-     so the focused item lands in the visible upper half */
-  const mobileBias = stage.clientWidth < 640 ? -1.5 : 0;
   focusPoint = new THREE.Vector3(
     THREE.MathUtils.clamp(wp.x, -4.2, 4.2),
-    THREE.MathUtils.clamp(wp.y + 0.5, 1.0, 2.8) + mobileBias,
+    THREE.MathUtils.clamp(wp.y + 0.5, 1.0, 2.8),
     THREE.MathUtils.clamp(wp.z, -4.2, 4.2)
   );
-  zoomTarget = stage.clientWidth < 640 ? 1.2 : 1.32;
+  zoomTarget = stage.clientWidth < 640 ? 1.12 : 1.32;
 }
 function resetFocus() { focusPoint = null; zoomTarget = 1; }
 
@@ -1273,32 +1270,83 @@ function renderRail() {
   railNext.disabled = step >= LAST;
 }
 
-/* anchor the story card beside the focused item (speech-bubble pattern);
-   intro / thanks float bottom-center; mobile keeps its fixed CSS layout */
+/* Story-card placement rule: the card must NEVER cover the focused item or
+   the center character. Both get projected screen rects; candidate positions
+   (beside item → corners, or top/bottom zones on mobile) are scored by
+   overlap with those protected rects and the first clean one wins. */
 const projV = new THREE.Vector3();
+function toScreen(x, y, z) {
+  projV.set(x, y, z).project(camera);
+  return [(projV.x + 1) / 2 * stage.clientWidth, (1 - projV.y) / 2 * stage.clientHeight];
+}
+function worldRect(cx, cz, yBot, yTop, halfWorldW) {
+  const [sx, sTop] = toScreen(cx, yTop, cz);
+  const sBot = toScreen(cx, yBot, cz)[1];
+  const ppu = (stage.clientHeight / (2 * camera.top)) * camera.zoom;
+  const hw = halfWorldW * ppu;
+  return { l: sx - hw, r: sx + hw, t: sTop, b: sBot };
+}
+function rectOverlap(a, b) {
+  const w = Math.min(a.r, b.r) - Math.max(a.l, b.l);
+  const h = Math.min(a.b, b.b) - Math.max(a.t, b.t);
+  return w > 0 && h > 0 ? w * h : 0;
+}
 function placeDialog() {
   if (!dlg.classList.contains('on')) return;
-  if (stage.clientWidth < 640) return;             /* mobile: CSS handles it */
   dlg.classList.remove('tail-left', 'tail-right');
-  const W = dlg.offsetWidth || 430, H = dlg.offsetHeight || 220;
   const sw = stage.clientWidth, sh = stage.clientHeight;
+  const W = dlg.offsetWidth || 430, H = dlg.offsetHeight || 220;
+  const M = 14, TOP = 68, BOT = 56;
   const id = (step >= 0 && step < LAST) ? ORDER[step] : null;
-  if (!id) {
-    dlg.style.left = (sw - W) / 2 + 'px';
-    dlg.style.top = (sh - H - 76) + 'px';
-    return;
+
+  /* protected rects (padded): character always, focused item when present */
+  const prot = [worldRect(minimi.position.x, minimi.position.z, minimi.position.y, minimi.position.y + 2.6, 0.85)];
+  let itemRect = null;
+  if (id && id !== 'minimi') {
+    const e = interactables.find(i => i.id === id);
+    const mp = markerPos[id];
+    itemRect = worldRect(e.baseP.x, e.baseP.z, Math.min(e.baseP.y, 0.1), mp.y + 0.4, ringR[id] || 1);
+    prot.push(itemRect);
   }
-  const mp = markerPos[id];
-  projV.set(mp.x, mp.y - 1.0, mp.z).project(camera);
-  const sx = (projV.x + 1) / 2 * sw;
-  const sy = (1 - projV.y) / 2 * sh;
-  let left = sx + 110, tail = 'tail-left';         /* card right of the item */
-  if (left + W > sw - 16) { left = sx - 110 - W; tail = 'tail-right'; }
-  left = Math.max(12, Math.min(left, sw - W - 12));
-  const top = Math.max(74, Math.min(sy - H * 0.5, sh - H - 72));
-  dlg.style.left = left + 'px';
-  dlg.style.top = top + 'px';
-  dlg.classList.add(tail);
+  const padded = prot.map(r => ({ l: r.l - 10, r: r.r + 10, t: r.t - 10, b: r.b + 10 }));
+
+  const clampC = (x, y, tail) => {
+    x = Math.max(M, Math.min(x, sw - W - M));
+    y = Math.max(TOP, Math.min(y, sh - H - BOT));
+    return { l: x, r: x + W, t: y, b: y + H, x, y, tail };
+  };
+  const cands = [];
+  if (sw < 640) {
+    /* phones: card spans full width — only top zone vs bottom zone */
+    const mk = (y) => ({ l: M, r: sw - M, t: y, b: y + H, y });
+    cands.push(mk(sh - H - BOT), mk(TOP));
+  } else if (itemRect) {
+    const midY = (itemRect.t + itemRect.b) / 2 - H / 2;
+    cands.push(clampC(itemRect.r + 26, midY, 'tail-left'));
+    cands.push(clampC(itemRect.l - 26 - W, midY, 'tail-right'));
+    cands.push(clampC(sw - W - M, TOP), clampC(M, TOP));
+    cands.push(clampC(sw - W - M, sh - H - BOT), clampC(M, sh - H - BOT));
+  } else {
+    cands.push(clampC((sw - W) / 2, sh - H - BOT));
+    cands.push(clampC((sw - W) / 2, TOP));
+    cands.push(clampC(sw - W - M, TOP), clampC(M, TOP));
+  }
+  let best = cands[0], bestScore = Infinity;
+  for (const c of cands) {
+    let s = 0;
+    for (const r of padded) s += rectOverlap(c, r);
+    if (s === 0) { best = c; break; }
+    if (s < bestScore) { bestScore = s; best = c; }
+  }
+  if (sw < 640) {
+    dlg.style.left = '';                     /* CSS pins left/right on phones */
+    dlg.style.top = best.y + 'px';
+  } else {
+    dlg.style.left = best.x + 'px';
+    dlg.style.top = best.y + 'px';
+    if (best.tail) dlg.classList.add(best.tail);
+  }
+  dlg.style.transform = 'none';
 }
 
 /* RPG-dialog typewriter: full text laid out invisibly first (no reflow),
@@ -1537,7 +1585,8 @@ function animate(now = 0) {
 
   /* camera: drag rotation + focus pan + zoom */
   azOffset += (azTarget - azOffset) * 0.08;
-  const want = focusPoint ? BASE_TARGET.clone().lerp(focusPoint, 0.5) : BASE_TARGET;
+  const want = focusPoint ? BASE_TARGET.clone().lerp(focusPoint, 0.5) : BASE_TARGET.clone();
+  if (stage.clientWidth < 640) want.y -= 2.4;   /* portrait: pan the whole scene above the card zone */
   curTarget.lerp(want, 0.06);
   camera.zoom += (zoomTarget - camera.zoom) * 0.06;
   camera.updateProjectionMatrix();
