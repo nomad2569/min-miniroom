@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ミンのミニルーム</title>
+<meta property="og:title" content="ミンのミニルーム">
+<meta property="og:description" content="はじめまして、ミンです。家具を押すなよ!絶対に押すなよ!">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nomad2569.github.io/min-miniroom/">
+<meta property="og:image" content="https://nomad2569.github.io/min-miniroom/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌰</text></svg>">
 <style>
 :root{
@@ -33,6 +39,35 @@ body{
   color:var(--brown);
   -webkit-font-smoothing:antialiased;
 }
+
+/* ── opening splash (pretext-fitted title + PRESS START) ── */
+#splash{
+  position:fixed; inset:0; z-index:100;
+  background-color:var(--paper);
+  background-image:radial-gradient(circle, var(--dot) 1.2px, transparent 1.2px);
+  background-size:20px 20px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:18px; cursor:pointer;
+  transition:opacity .6s ease;
+}
+#splash.out{opacity:0; pointer-events:none}
+#splash-title{
+  font-weight:800; color:var(--brown); white-space:nowrap;
+  letter-spacing:.02em; line-height:1.1;
+  text-shadow:0 6px 30px rgba(0,0,0,.6);
+}
+#splash-sub{
+  font-family:"Menlo","Courier New",monospace;
+  font-size:12px; letter-spacing:4px; color:var(--brown-soft);
+}
+#splash-press{
+  margin-top:26px;
+  font-family:"Menlo","Courier New",monospace;
+  font-size:14px; font-weight:700; letter-spacing:5px;
+  color:var(--accent);
+  animation:press-blink 1.1s steps(2,start) infinite;
+}
+@keyframes press-blink{to{visibility:hidden}}
 
 /* ── minihompy window frame ────────────────────────── */
 #frame{
@@ -211,6 +246,9 @@ body{
   padding:8px 16px 8px 13px;
   box-shadow:0 8px 20px rgba(0,0,0,.45);
 }
+#bgm{cursor:pointer}
+#bgm:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+#bgm:not(.playing) .eq i{animation-play-state:paused; height:5px}
 #bgm .note{font-size:14px; color:#6FC9A8; font-weight:800}
 #bgm .eq{display:flex; align-items:flex-end; gap:2.5px; height:16px}
 #bgm .eq i{width:3.5px; border-radius:2px; background:var(--sakura-deep); animation:eq .8s ease-in-out infinite}
@@ -311,6 +349,7 @@ body{
   #rail-label{min-width:52px; font-size:11px}
 }
 @media (prefers-reduced-motion: reduce){
+  #splash-press{animation:none}
   #dlg-list li{animation:none; opacity:1}
   #kiriban .blink{animation:none}
   #bgm .eq i{animation:none; height:9px}
@@ -321,6 +360,12 @@ body{
 </style>
 </head>
 <body>
+
+<div id="splash">
+  <div id="splash-title">ミンのミニルーム</div>
+  <div id="splash-sub">MIN — TIMETREE KOREA · 10x</div>
+  <div id="splash-press">▶ PRESS START</div>
+</div>
 
 <div id="frame">
   <div id="tabs" aria-hidden="true">
@@ -381,7 +426,7 @@ body{
       <button id="rail-next" aria-label="次へ">›</button>
     </nav>
 
-    <div id="bgm" aria-hidden="true">
+    <div id="bgm" role="button" tabindex="0" aria-pressed="false" aria-label="BGMを再生" title="クリックでBGM(自作チップチューン)">
       <span class="note">♪</span>
       <div class="eq"><i></i><i></i><i></i><i></i></div>
       <div class="scroller"><span>紅蓮の弓矢 (MIDI) — Linked Horizon &nbsp;♪&nbsp; BGM</span></div>

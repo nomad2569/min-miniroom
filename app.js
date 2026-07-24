@@ -1219,6 +1219,65 @@ function burstConfetti() {
 }
 
 /* ================================================================
+   CHIPTUNE AUDIO — synthesized with Web Audio, zero files,
+   so the offline build stays fully self-contained.
+   ================================================================ */
+let AC = null;
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  return AC;
+}
+function tone(freq, dur, opts = {}) {
+  if (!freq) return;
+  try {
+    const c = ac();
+    const o = c.createOscillator(), g = c.createGain();
+    const t0 = c.currentTime + (opts.when || 0);
+    o.type = opts.type || 'square';
+    o.frequency.setValueAtTime(freq, t0);
+    if (opts.slide) o.frequency.exponentialRampToValueAtTime(opts.slide, t0 + dur);
+    g.gain.setValueAtTime(opts.vol ?? 0.035, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  } catch { /* audio is decoration — never break the deck */ }
+}
+const sfx = {
+  blip:    () => tone(660, 0.06),
+  coin:    () => { tone(988, 0.07, { vol: 0.04 }); tone(1319, 0.18, { vol: 0.04, when: 0.07 }); },
+  tick:    () => tone(1500, 0.014, { vol: 0.01 }),
+  start:   () => { tone(523, 0.09, { vol: 0.05 }); tone(784, 0.14, { vol: 0.05, when: 0.09 }); },
+  fanfare: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.17, { vol: 0.05, when: i * 0.12 })),
+};
+
+/* tiny original 8-bit loop (A minor, 32 eighth-notes) — toggled on the BGM bar */
+const bgmEl = document.getElementById('bgm');
+let bgmOn = false, bgmTimeout = null;
+const BGM_STEP = 0.21;
+const BGM_MELODY = [
+  659, 0, 880, 988, 1047, 988, 880, 659,
+  587, 0, 784, 880, 988, 880, 784, 587,
+  523, 0, 659, 784, 880, 784, 659, 523,
+  587, 659, 587, 523, 440, 0, 440, 0,
+];
+const BGM_BASS = [220, 220, 175, 175, 131, 131, 165, 165];
+function bgmLoop() {
+  if (!bgmOn) return;
+  BGM_MELODY.forEach((f, i) => tone(f, BGM_STEP * 0.9, { vol: 0.022, when: i * BGM_STEP }));
+  BGM_BASS.forEach((f, i) => tone(f, BGM_STEP * 3.6, { vol: 0.02, type: 'triangle', when: i * BGM_STEP * 4 }));
+  bgmTimeout = setTimeout(bgmLoop, BGM_MELODY.length * BGM_STEP * 1000);
+}
+function toggleBgm() {
+  bgmOn = !bgmOn;
+  bgmEl.classList.toggle('playing', bgmOn);
+  bgmEl.setAttribute('aria-pressed', String(bgmOn));
+  if (bgmOn) bgmLoop();
+  else clearTimeout(bgmTimeout);
+}
+bgmEl.addEventListener('click', toggleBgm);
+bgmEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleBgm(); } });
+
+/* ================================================================
    UI + PRESENTATION STATE
    ================================================================ */
 const dlg = document.getElementById('dlg');
@@ -1253,6 +1312,7 @@ const LAST = ORDER.length;           /* thanks step index */
 for (let i = 0; i <= LAST; i++) {
   const d = document.createElement('i');
   if (i === LAST) d.className = 'fin';
+  d.title = i === LAST ? 'まとめ' : ITEMS[ORDER[i]].name;
   railDots.appendChild(d);
 }
 const dots = [...railDots.children];
@@ -1376,6 +1436,7 @@ function typeStory(text) {
       spans[i].after(cur);
       i++;
     }
+    if (AC && i % 6 === 0) sfx.tick();
     if (i >= spans.length) {
       clearInterval(typeTimer);
       cur.remove();
@@ -1425,6 +1486,7 @@ function award(id) {
   if (visited.has(id)) return;
   visited.add(id);
   dotori++;
+  sfx.coin();
   dotoriEl.textContent = dotori;
   dotoriBox.classList.remove('bump');
   void dotoriBox.offsetWidth;
@@ -1451,6 +1513,7 @@ function goStep(n) {
     showCard(THANKS);
     resetFocus(); faceCamera();
     hop(0.35);
+    sfx.fanfare();
     ma.bowTimer = 0;
     setBow(true);                    /* deep bow cycle runs while on this step */
     heartBurst();                    /* hearts float beside him — not over his head */
@@ -1468,6 +1531,7 @@ function goStep(n) {
     if (id === 'minimi') { faceCamera(); wave(); hop(0.5); ma.faceBack = null; }
     else { faceToward(markerPos[id]); hop(0.25); ma.faceBack = 1.7; }
     setPose('pose-' + id);           /* per-section acting frame (no-op if absent) */
+    sfx.blip();
     focusOn(id === 'minimi' ? minimi.position : markerPos[id]);
     showEmoteFor(id);
     marker.visible = true;
@@ -1491,6 +1555,8 @@ railNext.addEventListener('click', next);
 railPrev.addEventListener('click', prev);
 dlgX.addEventListener('click', () => { dlg.classList.remove('on'); resetFocus(); marker.visible = false; selRing.visible = false; });
 addEventListener('keydown', (e) => {
+  if (typeof splashActive !== 'undefined' && splashActive) { dismissSplash(); return; }
+  if (e.target === bgmEl) return;
   if (e.key === 'Escape') { dlg.classList.remove('on'); resetFocus(); marker.visible = false; selRing.visible = false; }
   if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
   if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
@@ -1498,7 +1564,7 @@ addEventListener('keydown', (e) => {
   if (e.key === '0') goStep(9);
 });
 renderRail();
-dlg.classList.add('on');   /* intro card on load */
+/* the intro card appears after the splash is dismissed */
 
 /* ================================================================
    INTERACTION — drag rotate / hover / click
@@ -1777,3 +1843,48 @@ function animate(now = 0) {
 resize();
 placeCamera();
 animate();
+
+/* ================================================================
+   OPENING SPLASH — the title is pretext-fitted to the viewport width
+   (re-fitted live on resize), dismissed by any key or tap, followed by
+   a slot-machine roll-up of the visitor counter.
+   ================================================================ */
+const splash = document.getElementById('splash');
+let splashActive = true;
+function fitSplash() {
+  const el = document.getElementById('splash-title');
+  const avail = innerWidth * 0.92;
+  let lo = 18, hi = 220;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) / 2;
+    el.style.fontSize = mid + 'px';
+    if (el.scrollWidth <= avail) lo = mid; else hi = mid;
+  }
+  el.style.fontSize = lo + 'px';
+}
+fitSplash();
+addEventListener('resize', () => { if (splashActive) fitSplash(); });
+
+function rollupCounter() {
+  if (REDUCED) return;
+  const digits = [...document.querySelectorAll('.odo i')];
+  const targets = digits.map(d => d.textContent);
+  digits.forEach(d => { d.textContent = '0'; });
+  digits.forEach((d, i) => {
+    const spin = setInterval(() => { d.textContent = String(Math.floor(Math.random() * 10)); }, 45);
+    setTimeout(() => { clearInterval(spin); d.textContent = targets[i]; }, 480 + i * 150);
+  });
+}
+
+function dismissSplash() {
+  if (!splashActive) return;
+  splashActive = false;
+  sfx.start();
+  splash.classList.add('out');
+  setTimeout(() => splash.remove(), 700);
+  rollupCounter();
+  dlg.classList.add('on');
+  placeDialog();
+  hop(0.4);
+}
+splash.addEventListener('pointerdown', dismissSplash);
