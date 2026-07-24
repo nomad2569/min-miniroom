@@ -1338,7 +1338,7 @@ function typeStory(text) {
 /* pretext-style title fitting: binary-search the largest font size whose
    single line lands exactly inside the card width */
 function fitTitle() {
-  let lo = 14, hi = 30;
+  let lo = 12, hi = stage.clientWidth < 640 ? 17 : 30;
   while (hi - lo > 0.5) {
     const mid = (lo + hi) / 2;
     dlgTitle.style.fontSize = mid + 'px';
