@@ -119,7 +119,19 @@ MANIFEST = [
     {"name": "pose-desk",      "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "arms crossed confidently with a pencil tucked behind his ear."},
     {"name": "pose-gadget",    "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "proudly holding up an ivory mechanical keyboard with both hands like a trophy."},
     {"name": "pose-server",    "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "holding a silver wrench in one hand, the other fist on his hip, like a proud mechanic."},
-    {"name": "pose-sofa",      "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "hugging a soft red heart-shaped cushion with both arms."},
+    {"name": "pose-sofa",      "aspect": "1:1", "transparent": False, "prompt": (
+        "16-bit SNES-era JRPG pixel art sprite of TWO characters standing side by "
+        "side, each holding a game controller, playing together as a duo: "
+        "(1) a young Korean man with medium-length wavy BLACK center-parted hair, "
+        "calm deadpan face, fresh leaf-green crew-neck t-shirt, off-white loose "
+        "pants, white sneakers; (2) a young Korean woman, slightly shorter, "
+        "shoulder-length dark brown hair, soft cheerful expression, coral-pink "
+        "t-shirt, cream pants, white sneakers. Matching art style, about 3.5 heads "
+        "tall, crisp pixels, muted palette, front view, no text. Both characters "
+        "centered together occupying 70% of the canvas height with wide margins — "
+        "hair and shoes fully inside the frame. IMPORTANT: flat solid magenta "
+        "(#FF00FF) background edge to edge, no shadow, no glow, no floor"
+    )},
     {"name": "pose-tennis",    "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "mid forehand tennis swing, holding a light-blue tennis racket."},
     {"name": "pose-books",     "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "holding an open book in one hand and scratching his head with the other, puzzled but determined."},
     {"name": "pose-figure",    "aspect": "1:1", "transparent": False, "prompt": PX_CHAR + "carefully holding a tiny collectible figure box with both hands, admiring it."},

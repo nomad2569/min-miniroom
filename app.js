@@ -147,7 +147,7 @@ const stage = document.getElementById('stage');
    shadow maps only matter for the 3D-fallback scene */
 const HAS_PIXEL_SCENE = !!(typeof window !== 'undefined' && window.GEN_ASSETS && window.GEN_ASSETS['minimi-sprite']);
 const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'low-power' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));   /* pixel art — extra DPR is pure heat */
 renderer.shadowMap.enabled = !HAS_PIXEL_SCENE;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stage.appendChild(renderer.domElement);
@@ -1501,6 +1501,7 @@ function award(id) {
 
 function goStep(n) {
   step = THREE.MathUtils.clamp(n, -1, LAST);
+  wake(2);
   setBow(false);
   if (step === -1) {
     showCard(INTRO);
@@ -1555,6 +1556,7 @@ railNext.addEventListener('click', next);
 railPrev.addEventListener('click', prev);
 dlgX.addEventListener('click', () => { dlg.classList.remove('on'); resetFocus(); marker.visible = false; selRing.visible = false; });
 addEventListener('keydown', (e) => {
+  wake();
   if (typeof splashActive !== 'undefined' && splashActive) { dismissSplash(); return; }
   if (e.target === bgmEl) return;
   if (e.key === 'Escape') { dlg.classList.remove('on'); resetFocus(); marker.visible = false; selRing.visible = false; }
@@ -1591,6 +1593,7 @@ function pick(e) {
 }
 
 stage.addEventListener('pointerdown', (e) => {
+  wake();
   if (e.target.closest('#dlg') || e.target.closest('#bgm') || e.target.closest('#rail')) return;
   dragging = true; moved = false;
   downX = e.clientX; downY = e.clientY; lastX = e.clientX;
@@ -1598,6 +1601,7 @@ stage.addEventListener('pointerdown', (e) => {
   try { stage.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
 });
 stage.addEventListener('pointermove', (e) => {
+  wake(0.6);
   if (dragging) {
     const dx = e.clientX - lastX; lastX = e.clientX;
     azTarget = THREE.MathUtils.clamp(azTarget - dx * 0.0042, -AZ_MAX, AZ_MAX);
@@ -1641,21 +1645,37 @@ const MINIMI_BASE_Y = minimi.position.y;
 const bobAmp = REDUCED ? 0 : 0.13;
 const easeOut = (p) => 1 - Math.pow(1 - p, 3);
 
-let lastFrame = 0;
+/* demand-driven frame rate: 33fps only while something is actually moving
+   (input, camera glide, character actions, particles); 15fps when the room
+   is just idling — the scene is subtle enough that nobody can tell, and it
+   keeps laptops cold during a long presentation */
+let lastFrame = 0, activityUntil = 0;
+function wake(s = 1.2) { activityUntil = Math.max(activityUntil, performance.now() + s * 1000); }
 function animate(now = 0) {
   requestAnimationFrame(animate);
-  if (now - lastFrame < 30) return;   /* ~33fps cap — keeps laptops cool */
+  const active = now < activityUntil
+    || ma.hopT < 1 || ma.waveT < 1 || ma.spinT < 1 || ma.emoteT < 2.6
+    || !!confetti || !!hearts
+    || step === LAST                                  /* bow cycle */
+    || Math.abs(azTarget - azOffset) > 0.002
+    || Math.abs(zoomTarget - camera.zoom) > 0.004;
+  if (now - lastFrame < (active ? 30 : 66)) return;
   lastFrame = now;
-  const dt = Math.min(clock.getDelta(), 0.06);
+  stage.dataset.f = ((+stage.dataset.f || 0) + 1) % 1e6;   /* rendered-frame counter (perf debugging) */
+  const dt = Math.min(clock.getDelta(), 0.08);
   const t = clock.getElapsedTime();
 
   /* camera: drag rotation + focus pan + zoom */
   azOffset += (azTarget - azOffset) * 0.08;
   const want = focusPoint ? BASE_TARGET.clone().lerp(focusPoint, 0.5) : BASE_TARGET.clone();
   if (stage.clientWidth < 640) want.y -= 2.4;   /* portrait: pan the whole scene above the card zone */
+  if (curTarget.distanceToSquared(want) > 0.004) wake(0.3);   /* keep full fps while gliding */
   curTarget.lerp(want, 0.06);
-  camera.zoom += (zoomTarget - camera.zoom) * 0.06;
-  camera.updateProjectionMatrix();
+  const zd = zoomTarget - camera.zoom;
+  if (Math.abs(zd) > 0.0005) {
+    camera.zoom += zd * 0.06;
+    camera.updateProjectionMatrix();
+  }
   placeCamera();
 
   /* minimi: hop (+ float bob for the 3D fallback only — the sprite stands) */
