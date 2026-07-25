@@ -2,3 +2,4 @@
 .DS_Store
 .playwright-mcp/
 assets/generated/*.orig.png
+assets/reference/
