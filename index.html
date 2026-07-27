@@ -51,11 +51,21 @@ body{
   transition:opacity .6s ease;
 }
 #splash.out{opacity:0; pointer-events:none}
+/* text stays invisible until JS has fitted it — the 4MB offline file parses
+   slowly on weak wifi and the unfitted small text used to flash first */
 #splash-title{
   font-weight:800; color:var(--brown); white-space:nowrap;
   letter-spacing:.02em; line-height:1.1;
+  font-size:11vw; opacity:0;
   text-shadow:0 6px 30px rgba(0,0,0,.6);
 }
+#splash-gag{
+  font-weight:800; color:var(--accent); white-space:nowrap;
+  font-size:3.6vw; opacity:0;
+  text-shadow:0 4px 18px rgba(0,0,0,.5);
+}
+#splash.fitted #splash-title,
+#splash.fitted #splash-gag{opacity:1; transition:opacity .5s ease}
 #splash-sub{
   font-family:"Menlo","Courier New",monospace;
   font-size:12px; letter-spacing:4px; color:var(--brown-soft);
@@ -363,6 +373,7 @@ body{
 
 <div id="splash">
   <div id="splash-title">ミンのミニルーム</div>
+  <div id="splash-gag">家具を押すなよ!絶対に押すなよ!</div>
   <div id="splash-sub">MIN — TIMETREE KOREA · 10x</div>
   <div id="splash-press">▶ PRESS START</div>
 </div>
@@ -429,7 +440,7 @@ body{
     <div id="bgm" role="button" tabindex="0" aria-pressed="false" aria-label="BGMを再生" title="クリックでBGM(自作チップチューン)">
       <span class="note">♪</span>
       <div class="eq"><i></i><i></i><i></i><i></i></div>
-      <div class="scroller"><span>紅蓮の弓矢 (MIDI) — Linked Horizon &nbsp;♪&nbsp; BGM</span></div>
+      <div class="scroller"><span>▶ ここを押すとBGMが流れます </span></div>
     </div>
   </div>
 </div>

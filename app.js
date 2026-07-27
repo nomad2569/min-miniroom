@@ -58,7 +58,7 @@ const ITEMS = {
   },
   game: {
     tag: '2013 — LoL', name: 'ゲーム機', title: 'LoL 韓国サーバー 500位',
-    story: '中学生のころ、LoL 韓国サーバーで500位まで行きました。でも、「これで食べていくのは難しい」と気づきました。ゲームは今も大好きです。',
+    story: '中学生のころ、LoL(リーグ・オブ・レジェンド)の韓国サーバーで500位まで行きました。でも、「これで食べていくのは難しい」と気づきました。ゲームは今も大好きです。',
     en: "Hit rank 500 on the Korean LoL server in middle school — then realized I couldn't make a living at it. Still love games, though.",
   },
   study: {
@@ -1271,6 +1271,9 @@ function toggleBgm() {
   bgmOn = !bgmOn;
   bgmEl.classList.toggle('playing', bgmOn);
   bgmEl.setAttribute('aria-pressed', String(bgmOn));
+  bgmEl.querySelector('.scroller span').textContent = bgmOn
+    ? '紅蓮の弓矢 (MIDI) — Linked Horizon ♪ ではなく自作8bitです '
+    : '▶ ここを押すとBGMが流れます ';
   if (bgmOn) bgmLoop();
   else clearTimeout(bgmTimeout);
 }
@@ -1628,7 +1631,15 @@ stage.addEventListener('pointerup', (e) => {
   dragging = false;
   if (!moved && !e.target.closest('#dlg') && !e.target.closest('#bgm') && !e.target.closest('#rail')) {
     const id = pick(e);
-    if (id) goStep(ORDER.indexOf(id));   /* direct click syncs the rail */
+    if (id) {
+      goStep(ORDER.indexOf(id));         /* direct click syncs the rail */
+    } else {
+      /* tapping empty floor closes the card — mouse-only escape hatch */
+      dlg.classList.remove('on');
+      resetFocus();
+      marker.visible = false;
+      selRing.visible = false;
+    }
   }
 });
 stage.addEventListener('pointerleave', () => {
@@ -1871,16 +1882,19 @@ animate();
    ================================================================ */
 const splash = document.getElementById('splash');
 let splashActive = true;
-function fitSplash() {
-  const el = document.getElementById('splash-title');
-  const avail = innerWidth * 0.92;
-  let lo = 18, hi = 220;
+function fitText(el, avail, max = 220) {
+  let lo = 14, hi = max;
   while (hi - lo > 1) {
     const mid = (lo + hi) / 2;
     el.style.fontSize = mid + 'px';
     if (el.scrollWidth <= avail) lo = mid; else hi = mid;
   }
   el.style.fontSize = lo + 'px';
+}
+function fitSplash() {
+  fitText(document.getElementById('splash-title'), innerWidth * 0.92);
+  fitText(document.getElementById('splash-gag'), innerWidth * 0.72, 90);
+  splash.classList.add('fitted');
 }
 fitSplash();
 addEventListener('resize', () => { if (splashActive) fitSplash(); });
